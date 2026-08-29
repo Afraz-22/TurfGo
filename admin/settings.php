@@ -62,3 +62,50 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])) {
 
 include "../includes/head.php";
 ?>
+
+<div class="page-header">
+    <h1>Account Settings</h1>
+</div>
+
+<?php if ($error): ?><div class="alert alert-error"><?php echo h($error); ?></div><?php endif; ?>
+<?php if ($success): ?><div class="alert alert-success"><?php echo h($success); ?></div><?php endif; ?>
+
+<div class="card">
+    <div class="card-title">Profile Information</div>
+    <form method="POST" action="settings.php">
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" name="name" value="<?php echo h($user['name']); ?>" required>
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" value="<?php echo h($user['email']); ?>" disabled>
+        </div>
+        <div class="form-group">
+            <label>Phone</label>
+            <input type="text" name="phone" value="<?php echo h($user['phone']); ?>">
+        </div>
+        <div class="form-group">
+            <label>Address</label>
+            <input type="text" name="address" value="<?php echo h($user['address']); ?>">
+        </div>
+        <button type="submit" name="update_profile" class="btn">Save Changes</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-title">Change Password</div>
+    <form method="POST" action="settings.php">
+        <div class="form-group">
+            <label>New Password</label>
+            <input type="password" name="new_password" required minlength="6">
+        </div>
+        <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" name="confirm_password" required minlength="6">
+        </div>
+        <button type="submit" name="change_password" class="btn btn-outline">Update Password</button>
+    </form>
+</div>
+
+<?php include "../includes/foot.php"; ?>
