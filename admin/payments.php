@@ -33,3 +33,46 @@ $payments = $conn->query(
 
 include "../includes/head.php";
 ?>
+
+
+<div class="page-header">
+    <h1>Payments</h1>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+        <tr>
+            <th>Booking ID</th>
+            <th>Customer</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Status</th>
+            <th>Paid At</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        <?php if ($payments->num_rows === 0): ?>
+            <tr><td colspan="7" class="empty-state">No payment records yet.</td></tr>
+        <?php endif; ?>
+        <?php while ($p = $payments->fetch_assoc()): ?>
+            <tr>
+                <td><?php echo h($p["booking_code"]); ?></td>
+                <td><?php echo h($p["customer"]); ?></td>
+                <td>৳<?php echo number_format($p["amount"], 0); ?></td>
+                <td><?php echo h(ucfirst(str_replace("_", " ", $p["method"]))); ?></td>
+                <td><span class="badge badge-<?php echo h($p["status"]); ?>"><?php echo h(ucfirst($p["status"])); ?></span></td>
+                <td><?php echo $p["paid_at"] ? h(date("d M Y g:i A", strtotime($p["paid_at"]))) : "—"; ?></td>
+                <td>
+                    <?php if ($p["status"] !== "paid"): ?>
+                        <a class="icon-btn" href="payments.php?mark_paid=<?php echo (int)$p['id']; ?>" title="Mark as paid">✅</a>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        <?php endwhile; ?>
+        </tbody>
+    </table>
+</div>
+
+<?php include "../includes/foot.php"; ?>
