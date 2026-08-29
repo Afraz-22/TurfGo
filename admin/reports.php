@@ -31,3 +31,50 @@ $by_turf = $conn->query(
 
 include "../includes/head.php";
 ?>
+
+<div class="page-header">
+    <h1>Reports</h1>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="label">Total Bookings</div>
+        <div class="value"><?php echo (int)$total_bookings; ?></div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Total Revenue</div>
+        <div class="value">৳<?php echo number_format($total_revenue, 0); ?></div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Cancelled Bookings</div>
+        <div class="value"><?php echo (int)$cancelled_bookings; ?></div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Total Players</div>
+        <div class="value"><?php echo (int)$new_users; ?></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">Revenue by Turf</div>
+    <table>
+        <thead>
+        <tr>
+            <th>Turf</th>
+            <th>Total Bookings</th>
+            <th>Revenue</th>
+        </tr>
+        </thead>
+        <tbody>
+        <?php while ($row = $by_turf->fetch_assoc()): ?>
+            <tr>
+                <td><?php echo h($row["name"]); ?></td>
+                <td><?php echo (int)$row["total"]; ?></td>
+                <td>৳<?php echo number_format($row["revenue"], 0); ?></td>
+            </tr>
+        <?php endwhile; ?>
+        </tbody>
+    </table>
+</div>
+
+<?php include "../includes/foot.php"; ?>
