@@ -51,3 +51,58 @@ if (isset($_GET["delete"])) {
     header("Location: turf-pricing.php");
     exit();
 }
+
+$turfs = $conn->query("SELECT * FROM turfs ORDER BY created_at DESC");
+
+include "../includes/head.php";
+?>
+
+<div class="page-header">
+    <h1>All Turfs</h1>
+</div>
+
+<?php if ($error): ?><div class="alert alert-error"><?php echo h($error); ?></div><?php endif; ?>
+<?php if ($success): ?><div class="alert alert-success"><?php echo h($success); ?></div><?php endif; ?>
+
+<div class="card">
+    <div class="card-title">Add New Turf</div>
+    <form method="POST" action="turf-pricing.php" class="filter-bar">
+        <input type="text" name="name" placeholder="Turf name" required>
+        <input type="text" name="location" placeholder="Location" required>
+        <input type="number" name="price" placeholder="Price per hour" step="0.01" required>
+        <button type="submit" name="add_turf" class="btn">+ Add Turf</button>
+    </form>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+        <tr>
+            <th>Turf Name</th>
+            <th>Price (per hour)</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        <?php if ($turfs->num_rows === 0): ?>
+            <tr><td colspan="5" class="empty-state">No turfs added yet.</td></tr>
+        <?php endif; ?>
+        <?php while ($t = $turfs->fetch_assoc()): ?>
+            <tr>
+                <td><?php echo h($t["name"]); ?></td>
+                <td>৳<?php echo number_format($t["price_per_hour"], 0); ?></td>
+                <td><?php echo h($t["location"]); ?></td>
+                <td><span class="badge badge-<?php echo h($t["status"]); ?>"><?php echo h(ucfirst($t["status"])); ?></span></td>
+                <td>
+                    <a class="icon-btn" href="turf-pricing.php?toggle=<?php echo (int)$t['id']; ?>" title="Toggle status">🔁</a>
+                    <a class="icon-btn" href="turf-pricing.php?delete=<?php echo (int)$t['id']; ?>" title="Delete" data-confirm="Delete this turf?">🗑️</a>
+                </td>
+            </tr>
+        <?php endwhile; ?>
+        </tbody>
+    </table>
+</div>
+
+<?php include "../includes/foot.php"; ?>
