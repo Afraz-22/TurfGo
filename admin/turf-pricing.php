@@ -34,3 +34,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_turf"])) {
     }
     $stmt->close();
 }
+
+
+// Toggle turf status
+if (isset($_GET["toggle"])) {
+    $id = (int)$_GET["toggle"];
+    $conn->query("UPDATE turfs SET status = IF(status='active','inactive','active') WHERE id = $id");
+    header("Location: turf-pricing.php");
+    exit();
+}
+
+// Delete turf
+if (isset($_GET["delete"])) {
+    $id = (int)$_GET["delete"];
+    $conn->query("DELETE FROM turfs WHERE id = $id");
+    header("Location: turf-pricing.php");
+    exit();
+}
