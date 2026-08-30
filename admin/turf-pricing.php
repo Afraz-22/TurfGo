@@ -14,3 +14,23 @@ $nav_items = [
     ["key" => "reports", "href" => "reports.php", "icon" => "📈", "label" => "Reports"],
     ["key" => "settings", "href" => "settings.php", "icon" => "⚙️", "label" => "Settings"],
 ];
+
+
+$error = "";
+$success = "";
+
+// Add a new turf
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["add_turf"])) {
+    $name = trim($_POST["name"]);
+    $location = trim($_POST["location"]);
+    $price = (float)$_POST["price"];
+
+    $stmt = $conn->prepare("INSERT INTO turfs (name, location, price_per_hour, status) VALUES (?, ?, ?, 'active')");
+    $stmt->bind_param("ssd", $name, $location, $price);
+    if ($stmt->execute()) {
+        $success = "Turf added successfully.";
+    } else {
+        $error = "Could not add turf.";
+    }
+    $stmt->close();
+}
