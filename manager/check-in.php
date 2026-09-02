@@ -14,68 +14,180 @@ $nav_items = [
     ["key" => "profile", "href" => "profile.php", "icon" => "👤", "label" => "Profile"],
 ];
 
-$booking = null;
-$query = isset($_GET["q"]) ? trim($_GET["q"]) : "";
-
-if ($query !== "") {
-    $like = "%" . $query . "%";
-    $stmt = $conn->prepare(
-        "SELECT b.id, b.booking_code, b.booking_date, b.start_time, b.end_time, b.status,
-                t.name AS turf_name, u.name AS customer, u.email
-         FROM bookings b
-         JOIN turfs t ON b.turf_id = t.id
-         JOIN users u ON b.user_id = u.id
-         WHERE b.booking_code LIKE ? OR u.name LIKE ?
-         ORDER BY b.booking_date DESC LIMIT 1"
-    );
-    $stmt->bind_param("ss", $like, $like);
+// Perform check-in (mark booking completed)
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["checkin_id"])) {
+    $id = (int)$_POST["checkin_id"];
+    $stmt = $conn->prepare("UPDATE bookings SET status = 'completed' WHERE id = ?");
+    $stmt->bind_param("i", $id);
     $stmt->execute();
-    $booking = $stmt->get_result()->fetch_assoc();
     $stmt->close();
+
+    $redirect_url = "check-in.php?msg=checked_in";
+    if (!empty($_POST["redirect_q"])) {
+        $redirect_url .= "&q=" . urlencode($_POST["redirect_q"]);
+    }
+    if (!empty($_POST["redirect_filter"])) {
+        $redirect_url .= "&filter=" . urlencode($_POST["redirect_filter"]);
+    }
+    header("Location: " . $redirect_url);
+    exit();
 }
 
-// Perform check-in (mark booking completed)
-if (isset($_POST["checkin_id"])) {
-    $id = (int)$_POST["checkin_id"];
-    $conn->query("UPDATE bookings SET status = 'completed' WHERE id = $id");
-    header("Location: check-in.php?q=" . urlencode($query));
-    exit();
+$query = isset($_GET["q"]) ? trim($_GET["q"]) : "";
+$filter = isset($_GET["filter"]) ? trim($_GET["filter"]) : "all";
+
+// Fetch Stats for check-in
+$stat_total = $conn->query("SELECT COUNT(*) AS c FROM bookings")->fetch_assoc()["c"];
+$stat_today = $conn->query("SELECT COUNT(*) AS c FROM bookings WHERE booking_date = CURDATE()")->fetch_assoc()["c"];
+$stat_ready = $conn->query("SELECT COUNT(*) AS c FROM bookings WHERE status IN ('pending', 'confirmed')")->fetch_assoc()["c"];
+$stat_completed = $conn->query("SELECT COUNT(*) AS c FROM bookings WHERE status = 'completed'")->fetch_assoc()["c"];
+
+// Build SQL query
+$sql = "SELECT b.id, b.booking_code, b.booking_date, b.start_time, b.end_time, b.amount, b.status,
+               t.name AS turf_name, u.name AS customer, u.email, u.phone
+        FROM bookings b
+        JOIN turfs t ON b.turf_id = t.id
+        JOIN users u ON b.user_id = u.id
+        WHERE 1=1";
+
+$params = [];
+$types = "";
+
+if ($filter === "today") {
+    $sql .= " AND b.booking_date = CURDATE()";
+} elseif ($filter === "ready") {
+    $sql .= " AND b.status IN ('pending', 'confirmed')";
+} elseif ($filter === "completed") {
+    $sql .= " AND b.status = 'completed'";
+} elseif ($filter === "cancelled") {
+    $sql .= " AND b.status = 'cancelled'";
+}
+
+if ($query !== "") {
+    $sql .= " AND (b.booking_code LIKE ? OR u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR t.name LIKE ?)";
+    $like = "%" . $query . "%";
+    $params = array_merge($params, [$like, $like, $like, $like, $like]);
+    $types .= "sssss";
+}
+
+$sql .= " ORDER BY b.booking_date DESC, b.start_time DESC";
+
+if (!empty($params)) {
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $bookings_result = $stmt->get_result();
+    $stmt->close();
+} else {
+    $bookings_result = $conn->query($sql);
 }
 
 include "../includes/head.php";
 ?>
 
 <div class="page-header">
-    <h1>Check-in</h1>
+    <h1>Player Check-in</h1>
+</div>
+
+<?php if (isset($_GET["msg"]) && $_GET["msg"] === "checked_in"): ?>
+    <div class="alert alert-success">✅ Player has been successfully checked in!</div>
+<?php endif; ?>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="label">Total Bookings</div>
+        <div class="value"><?php echo (int)$stat_total; ?></div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Today's Bookings</div>
+        <div class="value"><?php echo (int)$stat_today; ?></div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Ready for Check-in</div>
+        <div class="value"><?php echo (int)$stat_ready; ?></div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Completed Check-ins</div>
+        <div class="value"><?php echo (int)$stat_completed; ?></div>
+    </div>
+</div>
+
+<div class="tab-bar">
+    <a href="check-in.php?filter=all<?php echo $query !== '' ? '&q=' . urlencode($query) : ''; ?>" class="<?php echo $filter === 'all' ? 'active' : ''; ?>">All Players</a>
+    <a href="check-in.php?filter=today<?php echo $query !== '' ? '&q=' . urlencode($query) : ''; ?>" class="<?php echo $filter === 'today' ? 'active' : ''; ?>">Today's Bookings</a>
+    <a href="check-in.php?filter=ready<?php echo $query !== '' ? '&q=' . urlencode($query) : ''; ?>" class="<?php echo $filter === 'ready' ? 'active' : ''; ?>">Ready for Check-in</a>
+    <a href="check-in.php?filter=completed<?php echo $query !== '' ? '&q=' . urlencode($query) : ''; ?>" class="<?php echo $filter === 'completed' ? 'active' : ''; ?>">Checked-in</a>
+    <a href="check-in.php?filter=cancelled<?php echo $query !== '' ? '&q=' . urlencode($query) : ''; ?>" class="<?php echo $filter === 'cancelled' ? 'active' : ''; ?>">Cancelled</a>
 </div>
 
 <div class="card">
-    <form method="GET" action="check-in.php" class="filter-bar">
-        <input type="text" name="q" placeholder="Search booking ID or name..." value="<?php echo h($query); ?>" style="flex:1;">
+    <form method="GET" action="check-in.php" class="filter-bar" style="margin-bottom:0;">
+        <input type="hidden" name="filter" value="<?php echo h($filter); ?>">
+        <input type="text" name="q" placeholder="Search by booking ID, player name, phone, email, or turf..." value="<?php echo h($query); ?>" style="flex:1;">
         <button type="submit" class="btn">Search</button>
+        <?php if ($query !== ""): ?>
+            <a href="check-in.php?filter=<?php echo h($filter); ?>" class="btn btn-outline" style="line-height:1.2;">Clear</a>
+        <?php endif; ?>
     </form>
 </div>
 
-<?php if ($query !== "" && !$booking): ?>
-    <div class="card empty-state">No matching booking found.</div>
-<?php elseif ($booking): ?>
-    <div class="card">
-        <div class="card-title">Booking ID: <?php echo h($booking["booking_code"]); ?></div>
-        <table>
-            <tr><th>Customer</th><td><?php echo h($booking["customer"]); ?></td></tr>
-            <tr><th>Turf</th><td><?php echo h($booking["turf_name"]); ?></td></tr>
-            <tr><th>Date</th><td><?php echo h(date("d M Y", strtotime($booking["booking_date"]))); ?></td></tr>
-            <tr><th>Time</th><td><?php echo h(date("g:i A", strtotime($booking["start_time"]))); ?> - <?php echo h(date("g:i A", strtotime($booking["end_time"]))); ?></td></tr>
-            <tr><th>Status</th><td><span class="badge badge-<?php echo h($booking["status"]); ?>"><?php echo h(ucfirst($booking["status"])); ?></span></td></tr>
-        </table>
-
-        <?php if ($booking["status"] !== "completed" && $booking["status"] !== "cancelled"): ?>
-            <form method="POST" action="check-in.php" style="margin-top:16px;">
-                <input type="hidden" name="checkin_id" value="<?php echo (int)$booking['id']; ?>">
-                <button type="submit" class="btn">Check-in Customer</button>
-            </form>
+<div class="card">
+    <div class="card-title">Booked Players List</div>
+    <table>
+        <thead>
+        <tr>
+            <th>Booking ID</th>
+            <th>Player / Customer</th>
+            <th>Turf</th>
+            <th>Date</th>
+            <th>Time Slot</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        <?php if (!$bookings_result || $bookings_result->num_rows === 0): ?>
+            <tr>
+                <td colspan="8" class="empty-state">No booked players found matching your criteria.</td>
+            </tr>
+        <?php else: ?>
+            <?php while ($b = $bookings_result->fetch_assoc()): ?>
+                <tr>
+                    <td><strong><?php echo h($b["booking_code"]); ?></strong></td>
+                    <td>
+                        <div><strong><?php echo h($b["customer"]); ?></strong></div>
+                        <?php if (!empty($b["phone"])): ?>
+                            <div style="font-size:12px; color:var(--text-muted);">📞 <?php echo h($b["phone"]); ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($b["email"])): ?>
+                            <div style="font-size:12px; color:var(--text-muted);">✉️ <?php echo h($b["email"]); ?></div>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo h($b["turf_name"]); ?></td>
+                    <td><?php echo h(date("d M Y", strtotime($b["booking_date"]))); ?></td>
+                    <td><?php echo h(date("g:i A", strtotime($b["start_time"]))); ?> - <?php echo h(date("g:i A", strtotime($b["end_time"]))); ?></td>
+                    <td>৳<?php echo h(number_format((float)$b["amount"], 2)); ?></td>
+                    <td><span class="badge badge-<?php echo h($b["status"]); ?>"><?php echo h(ucfirst($b["status"])); ?></span></td>
+                    <td>
+                        <?php if ($b["status"] === "completed"): ?>
+                            <span style="color:var(--success); font-weight:600; font-size:13px;">✓ Checked In</span>
+                        <?php elseif ($b["status"] === "cancelled"): ?>
+                            <span style="color:var(--danger); font-size:13px;">Cancelled</span>
+                        <?php else: ?>
+                            <form method="POST" action="check-in.php" style="display:inline;">
+                                <input type="hidden" name="checkin_id" value="<?php echo (int)$b['id']; ?>">
+                                <input type="hidden" name="redirect_q" value="<?php echo h($query); ?>">
+                                <input type="hidden" name="redirect_filter" value="<?php echo h($filter); ?>">
+                                <button type="submit" class="btn btn-sm" onclick="return confirm('Confirm check-in for <?php echo h(addslashes($b['customer'])); ?> (<?php echo h($b['booking_code']); ?>)?');">Check In</button>
+                            </form>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endwhile; ?>
         <?php endif; ?>
-    </div>
-<?php endif; ?>
+        </tbody>
+    </table>
+</div>
 
 <?php include "../includes/foot.php"; ?>
