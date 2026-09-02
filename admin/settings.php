@@ -19,7 +19,7 @@ $error = "";
 $success = "";
 $user_id = $_SESSION["user_id"];
 
-$user_stmt = $conn->prepare("SELECT name, email, phone, address FROM users WHERE id = ?");
+$user_stmt = $conn->prepare("SELECT name, email, phone, address, password FROM users WHERE id = ?");
 $user_stmt->bind_param("i", $user_id);
 $user_stmt->execute();
 $user = $user_stmt->get_result()->fetch_assoc();
@@ -45,18 +45,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["update_profile"])) {
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["change_password"])) {
-    $new_pass = $_POST["new_password"];
-    $confirm = $_POST["confirm_password"];
+    $current_pass = $_POST["current_password"] ?? "";
+    $new_pass = $_POST["new_password"] ?? "";
+    $confirm = $_POST["confirm_password"] ?? "";
 
-    if ($new_pass !== $confirm) {
+    if (!password_verify($current_pass, $user["password"])) {
+        $error = "Current password is incorrect.";
+    } elseif (strlen($new_pass) < 6) {
+        $error = "New password must be at least 6 characters long.";
+    } elseif ($new_pass !== $confirm) {
         $error = "New passwords do not match.";
     } else {
         $hashed = password_hash($new_pass, PASSWORD_DEFAULT);
         $stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
         $stmt->bind_param("si", $hashed, $user_id);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            $success = "Password changed successfully.";
+            $user["password"] = $hashed;
+        } else {
+            $error = "Failed to update password.";
+        }
         $stmt->close();
-        $success = "Password changed successfully.";
     }
 }
 
@@ -97,12 +106,16 @@ include "../includes/head.php";
     <div class="card-title">Change Password</div>
     <form method="POST" action="settings.php">
         <div class="form-group">
+            <label>Current Password</label>
+            <input type="password" name="current_password" required placeholder="Enter current password">
+        </div>
+        <div class="form-group">
             <label>New Password</label>
-            <input type="password" name="new_password" required minlength="6">
+            <input type="password" name="new_password" required minlength="6" placeholder="Enter new password (min 6 characters)">
         </div>
         <div class="form-group">
             <label>Confirm New Password</label>
-            <input type="password" name="confirm_password" required minlength="6">
+            <input type="password" name="confirm_password" required minlength="6" placeholder="Re-enter new password">
         </div>
         <button type="submit" name="change_password" class="btn btn-outline">Update Password</button>
     </form>
