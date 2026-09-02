@@ -42,7 +42,7 @@ a {
   color: inherit;
 }
 
-/*  Auth pages (login / register)  */
+/* ---------- Auth pages (login / register) ---------- */
 .auth-wrapper {
   min-height: 100vh;
   display: flex;
@@ -100,6 +100,7 @@ a {
   outline: none;
   border-color: var(--primary);
 }
+
 .btn {
   display: inline-block;
   border: none;
@@ -205,6 +206,7 @@ a {
   border-left: 3px solid var(--primary);
   font-weight: 700;
 }
+
 .main {
   flex: 1;
   min-width: 0;
@@ -358,6 +360,7 @@ th {
   font-size: 14px;
   margin-right: 6px;
 }
+
 /* ---------- Forms inline ---------- */
 .filter-bar {
   display: flex;
@@ -396,7 +399,7 @@ th {
   color: var(--white);
 }
 
-/* Turf listing (player)  */
+/* ---------- Turf listing (player) ---------- */
 .turf-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
