@@ -54,22 +54,32 @@ include "../includes/head.php";
             <th>Time</th>
             <th>Customer</th>
             <th>Amount</th>
-            <th>Status</th>
+            <th>Booking Status</th>
+            <th>Payment</th>
         </tr>
         </thead>
         <tbody>
         <?php if ($bookings->num_rows === 0): ?>
-            <tr><td colspan="7" class="empty-state">No bookings found.</td></tr>
+            <tr><td colspan="8" class="empty-state">No bookings found.</td></tr>
         <?php endif; ?>
         <?php while ($b = $bookings->fetch_assoc()): ?>
             <tr>
-                <td><?php echo h($b["booking_code"]); ?></td>
+                <td><strong><?php echo h($b["booking_code"]); ?></strong></td>
                 <td><?php echo h($b["turf_name"]); ?></td>
                 <td><?php echo h(date("d M Y", strtotime($b["booking_date"]))); ?></td>
                 <td><?php echo h(date("g:i A", strtotime($b["start_time"]))); ?> - <?php echo h(date("g:i A", strtotime($b["end_time"]))); ?></td>
                 <td><?php echo h($b["customer"]); ?></td>
-                <td>৳<?php echo number_format($b["amount"], 0); ?></td>
+                <td>৳<?php echo number_format($b["amount"], 2); ?></td>
                 <td><span class="badge badge-<?php echo h($b["status"]); ?>"><?php echo h(ucfirst($b["status"])); ?></span></td>
+                <td>
+                    <?php if ($b["status"] === "completed"): ?>
+                        <span class="badge badge-paid">Paid</span>
+                    <?php elseif ($b["status"] === "cancelled"): ?>
+                        <span class="badge badge-cancelled">Cancelled</span>
+                    <?php else: ?>
+                        <span class="badge badge-unpaid">Unpaid</span>
+                    <?php endif; ?>
+                </td>
             </tr>
         <?php endwhile; ?>
         </tbody>
